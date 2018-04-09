@@ -87,9 +87,19 @@ def part_X(X,y,attb_ndx):
     return New_X, New_Y, temp3
 	
 	
-class build_tree:
-    def __init__(self,attb_list):
-        self.attb_list=attb_list
+class DCT_classifer:
+    def __init__(self,attbs,labels):
+        self.attb_list=list(attbs)
+        self.all_attbs=list(attbs)
+        self.tree=Nodes.DCT_Tree()
+        self.labels=list(labels)
+        self.level=0
+    
+    def fit(self,X,y):
+        return self.build(X,y)
+    
+    def clear(self):
+        self.attb_list=list(self.all_attbs)
         self.tree=Nodes.DCT_Tree()
         self.level=0
     
@@ -97,7 +107,8 @@ class build_tree:
         self.level+=1
         #Step 1. if all same class than we are done
         if len(np.unique(y)) == 1:
-            return "val="+end_name+"  ->  label="+y[0]
+            #return "val="+end_name+"  ->  label="+y[0]
+            return tuple((end_name,y[0]))
             
         #Step 2. if there are no attributes then return N
         if len(self.attb_list) == 0:
@@ -107,7 +118,8 @@ class build_tree:
             for item in dic:
                 if dic[item] > Max:
                     majority = item
-            return "val="+end_name+"  ->  label="+majority
+            #return "val="+end_name+"  ->  label="+y[0]
+            return ((end_name,majority))
         
         #Step 3. find best splitting method (default using IG)
         best_val, best_attb = -1, 'None' 
@@ -124,7 +136,8 @@ class build_tree:
             self.root=split_attb
             self.tree.add_node(split_attb)
         else:
-            split_attb="val="+end_name+" -> "+split_attb
+            #split_attb="val="+end_name+" -> "+split_attb
+            split_attb=tuple((end_name,split_attb))
             self.tree.add_node(split_attb,parent)
         #Step 4. partition
         X_parts, Y_parts, names = part_X(X,y,best_attb)
@@ -134,3 +147,31 @@ class build_tree:
     
     def show(self):
         self.tree.display(self.root,0)
+        
+    def predict(self,X):
+        def p_row(row,root=-1):
+            y='NF'
+            if root == -1:
+                root = self.root
+                r_ndx=self.all_attbs.index(root)
+            else:
+                r_ndx=self.all_attbs.index(root[1])
+            childs= self.tree.nodes[root].children
+            r_attb = row[r_ndx]
+            for tup in childs:
+                if tup[0] == r_attb:
+                    if tup[1] in  self.labels:
+                        y = tup[1]
+                        break
+                    else:
+                        y = p_row(row,root=tup)
+                        break
+            return y
+        y=[]
+        X=np.array(X)
+        if len(X.shape) > 1:
+            for row in X:
+                y.append(p_row(row))
+        else:
+            return p_row(X)
+        return y
